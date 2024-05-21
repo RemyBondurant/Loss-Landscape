@@ -20,10 +20,10 @@ else:
     device = "cpu"
     print("Using CPU)")
 
-model = torch.load('test_model.pt')
-test_targets = torch.load('test_targets.pt')
-test_data = torch.load('test_data.pt')
-weights = torch.load('test_state_dict.pt', weights_only=True)
+model = torch.load('UAT Code/test_model.pt')
+test_targets = torch.load('UAT Code/test_targets.pt')
+test_data = torch.load('UAT Code/test_data.pt')
+weights = torch.load('UAT Code/test_state_dict.pt', weights_only=True)
 adjusted_weights = copy.deepcopy(weights)
 num_dims = 0
 flattened_weights = torch.empty(0)
