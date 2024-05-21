@@ -9,6 +9,8 @@ import numpy as np
 num_lengths = 100
 num_directions = 10
 std = 1
+p = 100
+eps = 10^-3
 quiet = False
 
 if torch.cuda.is_available():
@@ -42,6 +44,12 @@ mse_array = [mse]
 length_array = [0]
 direction_array = [torch.zeros(num_dims)]
 vector_array = [torch.zeros(num_dims).to(device)]
+A = torch.randn(num_dims, p) * std
+A = A.to(device)
+A_pinv = torch.pinverse(A)
+C_e_max = eps*torch.abs(A_pinv @ flattened_weights + 1)
+C_e_min = -eps*torch.abs(A_pinv @ flattened_weights + 1)
+highest_mse = -np.inf
 for i in range(num_directions): 
     rand_tensor = 2 * torch.rand(num_dims) - 1
     rand_tensor = rand_tensor / torch.norm(rand_tensor)
@@ -70,6 +78,9 @@ for i in range(num_directions):
         mse = float(mse)
         mse_array.append(mse)
         length_array.append(current_length)
+        if mse > highest_mse:
+            highest_mse = mse
+            highest_weights = copy.deepcopy(adjusted_weights)
         # print("RAND TENSOR")
         # print(rand_tensor)
         direction_array.append(rand_tensor)
@@ -113,5 +124,10 @@ if not quiet:
     ax.set_ylabel('Component 2', fontweight ='bold') 
     ax.set_zlabel('Loss Value', fontweight ='bold')
         
+    sharpness = (highest_mse - mse)/(1 + mse) * 100
+    print(sharpness)
+    
     # show plot
     plt.show()
+    
+    

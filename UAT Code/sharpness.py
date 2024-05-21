@@ -6,11 +6,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-num_lengths = 100
-num_directions = 10
-std = 1
+std = 0.01
 p = 100
-eps = 0.01
+eps = 10^-3
 quiet = False
 
 if torch.cuda.is_available():
@@ -40,7 +38,7 @@ model.eval()
 y_pred = model(test_data)
 mse = loss_fn(y_pred, test_targets)
 mse = float(mse)
-A = torch.rand(num_dims, p)
+A = torch.randn(num_dims, p) * std
 A = A.to(device)
 A_pinv = torch.pinverse(A)
 C_e = eps*torch.abs(A_pinv @ flattened_weights + 1) 
@@ -64,12 +62,13 @@ for i in range(C_e.size(dim=0)):
     y_pred = model(test_data)
     mse_new = loss_fn(y_pred, test_targets)
     mse_new = float(mse_new)
-    print(mse_new)
+    # print(mse_new)
     if mse_new > highest_mse:
         highest_mse = mse_new
 sharpness = (highest_mse - mse)/(1 + mse) * 100
-print('------------------------')
-print(highest_mse)
-print(mse)
+# print('------------------------')
+if not quiet:
+    print(highest_mse)
+    print(mse)
 print(sharpness)
     
