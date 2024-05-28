@@ -1,11 +1,12 @@
 import copy
+import os
 import torch
 import numpy as np
 import scipy.io
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
-
+from utils import * 
+    
 num_lengths = 100
 num_directions = 10
 std = 1
@@ -20,20 +21,18 @@ else:
     device = "cpu"
     print("Using CPU)")
 
-model = torch.load('UAT Code/test_model.pt')
-test_targets = torch.load('UAT Code/test_targets.pt')
-test_data = torch.load('UAT Code/test_data.pt')
-weights = torch.load('UAT Code/test_state_dict.pt', weights_only=True)
-adjusted_weights = copy.deepcopy(weights)
-num_dims = 0
-flattened_weights = torch.empty(0)
-flattened_weights = flattened_weights.to(device)
-loss_fn = torch.nn.MSELoss()  # mean square error
+# print(os.getcwd())
+dict = torch.load('state1.pt')
+model = dict['model']
+train_data = dict['train_data']
+train_targets = dict['train_targets']
+test_data = dict['test_data']
+test_targets = dict['test_targets']
+weights = dict['state_dict']
 
-for key in weights:
-    num_dims += torch.numel(weights[key])
-    flatened_tensor = torch.flatten(weights[key])
-    flattened_weights = torch.cat((flattened_weights, flatened_tensor))
+adjusted_weights = copy.deepcopy(weights)
+flattened_weights, num_dims = flatten_weights(weights, device)
+loss_fn = torch.nn.MSELoss()  # mean square error
 
 model.load_state_dict(weights)
 model.eval()
@@ -53,24 +52,13 @@ highest_mse = -np.inf
 for i in range(num_directions): 
     rand_tensor = 2 * torch.rand(num_dims) - 1
     rand_tensor = rand_tensor / torch.norm(rand_tensor)
-    # print(torch.norm(rand_tensor))
     gaussian_lengths = torch.randn(num_lengths) * std
     for j in range(num_lengths):
         current_length = float(gaussian_lengths[j])
         new_length = rand_tensor * current_length
         new_length = new_length.to(device)
         new_weights_flattened = flattened_weights + new_length
-        start_index = 0
-        for key in weights:
-            tensors = weights[key]
-            desired_shape = tensors.size()
-            num_elems = tensors.numel()
-            end_index = start_index + num_elems
-            new_weight = new_weights_flattened[start_index:end_index]
-            start_index = end_index
-            new_weight = new_weight.reshape(desired_shape)
-            # print(new_weight)
-            adjusted_weights[key] = new_weight
+        adjusted_weights = reshape_flattened_weights(new_weights_flattened, weights)
         model.load_state_dict(adjusted_weights)
         model.eval()
         y_pred = model(test_data)
@@ -81,53 +69,10 @@ for i in range(num_directions):
         if mse > highest_mse:
             highest_mse = mse
             highest_weights = copy.deepcopy(adjusted_weights)
-        # print("RAND TENSOR")
-        # print(rand_tensor)
         direction_array.append(rand_tensor)
         vector_array.append(new_length)
-        # if not quiet:
-        #     print("NEW MSE: " + str(mse))
-# for key in weights:
-#     print(torch.equal(weights[key], adjusted_weights[key]))
 df = pd.DataFrame({"Loss": mse_array, "Length": length_array, "Direction": direction_array})
 mse_array = np.array(mse_array)
 vector_array = np.array(torch.stack(vector_array, dim=0).cpu())
 if not quiet:
-    U, S, Vt = np.linalg.svd(vector_array)
-    U = U[:,:2]
-    S = S[:2]
-    reduced = U @ np.diag(S)
-
-    # Creating dataset
-    x = U[:,0]
-    y = U[:,1]
-    z = mse_array
-    
-    # Creating figure
-    fig = plt.figure(figsize =(16, 9))  
-    ax = plt.axes(projection ='3d')  
-    
-    # Creating color map
-    my_cmap = plt.get_cmap('hot')
-    
-    # Creating plot
-    trisurf = ax.plot_trisurf(x, y, z,
-                            cmap = my_cmap,
-                            linewidth = 0.2, 
-                            antialiased = True,
-                            edgecolor = 'grey')  
-    fig.colorbar(trisurf, ax = ax, shrink = 0.5, aspect = 5)
-    ax.set_title('SVD Loss Plot')
-    
-    # Adding labels
-    ax.set_xlabel('Component 1', fontweight ='bold') 
-    ax.set_ylabel('Component 2', fontweight ='bold') 
-    ax.set_zlabel('Loss Value', fontweight ='bold')
-        
-    sharpness = (highest_mse - mse)/(1 + mse) * 100
-    print(sharpness)
-    
-    # show plot
-    plt.show()
-    
-    
+    plot_landscape(mse_array, vector_array)

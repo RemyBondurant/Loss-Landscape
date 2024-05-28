@@ -32,7 +32,7 @@ class CustomDataset:
         }
 
 num_points = []
-quiet = True
+quiet = False
 for i in range(30):
     string = str(25*i + 25)
     num_points.append(string.zfill(6))
@@ -44,7 +44,7 @@ else:
     device = "cpu"
     print("Using CPU)")
 
-for i in range(1):
+for i in range(29,30):
     torch.cuda.synchronize()
     start_func = time.time()
     for j in range(1):
@@ -52,7 +52,8 @@ for i in range(1):
             print('Func_' + str(num_points[i]) + ' Started')
         import_path = 'training_data/func_' + str(num_points[i]) + '.mat'
         export_path = 'mse/func_' + str(num_points[i])
-
+        
+        # print(os.getcwd())
         mat = scipy.io.loadmat(import_path)
         data = np.array(mat['x'])[:, j]
         data = data.reshape(-1, 1)
@@ -81,14 +82,14 @@ for i in range(1):
         model = model.to(device)
         
         # loss function and optimizer
-        lr_start = 0.001
+        lr_start = 0.05
         lr_final = 0.0000005
-        n_epochs = 100   # number of epochs to run
+        n_epochs = 200   # number of epochs to run
         batch_size = 10  # size of each batch
         scheduled = False
         
         loss_fn = nn.MSELoss()  # mean square error
-        optimizer = torch.optim.Adagrad(model.parameters(), lr=lr_start)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr_start)
         if scheduled:
             scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=(lr_final/lr_start)**(1/n_epochs))
         batch_start = torch.arange(0, len(train_data), batch_size)
@@ -153,10 +154,14 @@ for i in range(1):
     end_func = time.time()
     elapsed_time_func = end_func - start_func
     print('Func_' + str(num_points[i]) + " took " + str(elapsed_time_func) + " seconds")
-    torch.save(model, 'test_model.pt')
-    torch.save(test_targets, 'test_targets.pt')
-    torch.save(test_data, 'test_data.pt')
-    torch.save(model.state_dict(), 'test_state_dict.pt')
+    state = {'model': model, 'train_data': train_data, 'train_targets': train_targets, 'test_data': test_targets, 'test_targets': test_targets, 'state_dict': model.state_dict()}
+    # torch.save(model, 'UAT Code/test_model.pt')
+    # torch.save(train_targets, 'UAT Code/train_targets.pt')
+    # torch.save(train_data, 'UAT Code/test_data.pt')
+    # torch.save(test_targets, 'UAT Code/test_targets.pt')
+    # torch.save(test_data, 'UAT Code/test_data.pt')
+    # torch.save(model.state_dict(), 'UAT Code/test_state_dict.pt')
+    torch.save(state, 'state1.pt')
 
 if not quiet:
     plt.plot(history)
