@@ -22,7 +22,7 @@ else:
     print("Using CPU)")
 
 # print(os.getcwd())
-dict = torch.load('state1.pt')
+dict = torch.load('UAT Code/state1.pt')
 model = dict['model']
 train_data = dict['train_data']
 train_targets = dict['train_targets']
